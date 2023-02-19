@@ -106,12 +106,19 @@ namespace ECS
 					mWorld->mComponents.at(mID).erase(mWorld->mCompIDs.at(name));
 				}
 			}
-			KeyList& GetKey(void) { return mKey; }
-			bool CheckKey(const KeyList& cmp) const
+			template<typename T>
+			T& get()
 			{
+				auto name = comp_id_list.at(typeid(T).name());
+				return mWorld->mComponents.at(mID).at(name);
+			}
+			KeyList& GetKey(void) { return mKey; }
+			bool CheckKey(const KeyList& cmp, size_t num) const
+			{
+				size_t same = 0;
 				for (int i = 0; i < MAX_COMPONENTS; ++i)
-					if (mKey[i] ^ cmp[i]) return false;
-				return true;
+					if (mKey[i] == cmp[i]) same++;
+				return (num <= same)? true : false;
 			}
 		};
 		std::queue<EntityID> entity_id_list;
@@ -137,18 +144,17 @@ namespace ECS
 			make_key<_T2, Args...>(key);
 		}
 
-		template<typename _Return, class _FUNC, class _TUPLE, size_t N, class F>
-		_Return runSystem(_FUNC& _Func, _TUPLE& values, const EntityID entiyId)
+		template<class _TUPLE, size_t N, class F>
+		void _filter(_TUPLE& values, const EntityID entiyId) 
 		{
 			using _T1 = std::remove_pointer_t<F>;
 			auto name = typeid(_T1).name();
 			auto compId = mCompIDs.at(name);
 			assert((mComponents.at(entiyId).count(compId), "There are no such variable in given Entity"));
 			std::get<N>(values) = mComponents.at(entiyId).at(compId).get<_T1>();
-			return std::apply(_Func, values); //c++17 requires
 		}
-		template<typename _Return, class _FUNC, class _TUPLE, size_t N, class F, class S, class ...Vars>
-		_Return runSystem(_FUNC& _Func, _TUPLE& values, const EntityID entiyId)
+		template<class _TUPLE, size_t N, class F, class S, class ...Vars>
+		void _filter(_TUPLE& values, const EntityID entiyId)
 		{
 			using _T1 = std::remove_pointer_t<F>;
 			auto name = typeid(_T1).name();
@@ -156,7 +162,7 @@ namespace ECS
 			assert((mComponents.at(entiyId).count(compId), "There are no such variable in given Entity"));
 			mComponents.at(entiyId).at(compId).get<_T1>();
 			std::get<N>(values) = mComponents.at(entiyId).at(compId).get<_T1>();
-			return runSystem<_Return, _FUNC, _TUPLE, N + 1, S, Vars...>(_Func, values, entiyId);
+			_filter<_TUPLE, N + 1, S, Vars...>(values, entiyId);
 		}
 	protected:
 		template<class T>
@@ -194,32 +200,56 @@ namespace ECS
 			return mEntities.at(id);
 		}
 		template<typename R, typename ...Args>
-		std::vector<std::pair<EntityID, R>> system(R(*func)(Args...))
+		std::vector<EntityID> system(R(*func)(Args...))
 		{
-			std::tuple<Args...> values;
-			std::vector<std::pair<EntityID, R>> returns;
+			std::vector<EntityID> entityID;
+			std::vector<std::tuple<Args...>> vec;
 			KeyList duplicated_key;
 			make_key<Args...>(duplicated_key);
 			for (auto& kv : mEntities)
 			{
-				if(kv.second.CheckKey(duplicated_key))
-				returns.emplace_back(
-					std::make_pair(kv.first, runSystem<R, R(*)(Args...), std::tuple<Args...>, 0, Args...>(func, values, kv.first)));
+				if (kv.second.CheckKey(duplicated_key, sizeof ...(Args)))
+				{
+					std::tuple<Args...> values;
+					_filter<std::tuple<Args...>, 0, Args...>(values, kv.first);
+					vec.emplace_back(values);
+					entityID.emplace_back(kv.first);
+				}
 			}
-			return returns;
+			std::for_each(vec.begin(), vec.end(), [&func](std::tuple<Args...>& _Val) {std::apply(func, _Val); });
+			return entityID;
 		}
-		template<typename R = void, typename ...Args>
-		void system(void(*func)(Args...))
+		template<typename ...Args>
+		struct _Lambda
 		{
-			std::tuple<Args...> values;
-			KeyList duplicated_key;
-			make_key<Args...>(duplicated_key);
-			for (auto& kv : mEntities)
+			World* mWorld = nullptr;
+			_Lambda(World* world) : mWorld(world) {}
+
+			template<typename F>
+			void each(F&& func)
 			{
-				if (kv.second.CheckKey(duplicated_key))
-					runSystem<void, void(*)(Args...), std::tuple<Args...>, 0, Args...>(func, values, kv.first);
+				std::vector<std::tuple<Args...>> vec;
+				KeyList duplicated_key;
+				mWorld->make_key<Args...>(duplicated_key);
+				for (auto& kv : mWorld->mEntities)
+				{
+					if (kv.second.CheckKey(duplicated_key, sizeof ...(Args)))
+					{
+						std::tuple<Args...> values;
+						mWorld->_filter<std::tuple<Args...>, 0, Args...>(values, kv.first);
+						vec.emplace_back(values);
+					}
+				}
+				std::for_each(vec.begin(), vec.end(), [&func](std::tuple<Args...>& _Val) {std::apply(func, _Val); });
 			}
+		};
+
+		template<typename ...Args>
+		_Lambda<Args...> filter(void)
+		{
+			return _Lambda<Args...>(this);
 		}
+		
 		void Show(void)
 		{
 			printf("_________________________________________________________\n");
