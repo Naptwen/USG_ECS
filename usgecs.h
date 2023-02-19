@@ -5,8 +5,6 @@
 #ifndef __USG_ECS_H__
 #define __USG_ECS_H__
 
-#if __cplusplus  != 201402L and  __cplusplus  != 199711L and  __cplusplus  != 1
-
 #include <iostream>
 #include <functional>
 #include <bitset>
@@ -246,5 +244,4 @@ namespace ECS
 		}
 	};
 }
-#endif
 #endif
