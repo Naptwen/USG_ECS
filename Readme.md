@@ -17,7 +17,6 @@ struct BB
 
 int testA(AA* A) // must pointer type
 {
-	//printf("%d %d, %d %d", A.x, A.y, B.x, B.y);
 	printf("%d %d", A->x, A->y);
 	A->x = A->x + 1;
 	printf("%d %d", A->x, A->y);
@@ -26,7 +25,6 @@ int testA(AA* A) // must pointer type
 }
 int testB(BB* B) // must pointer type
 {
-	//printf("%d %d, %d %d", A.x, A.y, B.x, B.y);
 	printf("%d %d", B->x, B->y);
 	B->x = B->x + 1;
 	printf("%d %d", B->x, B->y);
