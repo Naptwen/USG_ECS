@@ -1,48 +1,16 @@
-# MIT License(c) Useop Gim 2023 Feb 19, 2023
-# This is simple ECS system code
-# The apply code for < ++17 is 
-# referenced from 
-# htps://stackoverflow.com/questions/687490/how-do-i-expand-a-tuple-into-variadic-template-functions-arguments 
+# GNU Affero License(c) Useop Gim 2023 Feb 19, 2023
+# This is simple ECS system code 
+# The version of c++ > ++17 is required!
+
+#ifndef __USG_ECS_H__
+#define __USG_ECS_H__
+
+#if __cplusplus  != 201402L and  __cplusplus  != 199711L and  __cplusplus  != 1
+
 #include <iostream>
 #include <functional>
 #include <bitset>
 #include <queue>
-
-#if __cplusplus  == 201402L or   __cplusplus  == 199711L or  __cplusplus  == 1
-# Basic Apply Code reference from DRayX
-# htps://stackoverflow.com/questions/687490/how-do-i-expand-a-tuple-into-variadic-template-functions-arguments
-namespace std
-{
-	template<size_t N>
-	struct Apply {
-		template<typename F, typename T, typename... A>
-		static inline auto apply(F&& f, T&& t, A &&... a)
-			-> decltype(Apply<N - 1>::apply(std::forward<F>(f), std::forward<T>(t), std::get<N - 1>(std::forward<T>(t)), std::forward<A>(a)...))
-		{
-			return Apply<N - 1>::apply(std::forward<F>(f), std::forward<T>(t),
-				std::get<N - 1>(std::forward<T>(t)), std::forward<A>(a)...
-			);
-		}
-	};
-
-	template<>
-	struct Apply<0> {
-		template<typename F, typename T, typename... A>
-		static inline auto apply(F&& f, T&&, A &&... a)
-			-> decltype(std::forward<F>(f)(std::forward<A>(a)...))
-		{
-			return std::forward<F>(f)(std::forward<A>(a)...);
-		}
-	};
-
-	template<typename F, typename T>
-	inline auto apply(F&& f, T&& t)
-		-> decltype(Apply< std::tuple_size<typename std::decay<T>::type>::value>::apply(std::forward<F>(f), std::forward<T>(t)))
-	{
-		return Apply< std::tuple_size<typename std::decay<T>::type>::value>::apply(std::forward<F>(f), std::forward<T>(t));
-	}
-}
-#endif
 
 #define MAX_ENTITIES 4080
 #define MAX_COMPONENTS 40
@@ -64,9 +32,9 @@ namespace ECS
 		template<class T>
 		struct _Body : _Base
 		{
+			explicit _Body(T const& var) : mVar(var) {}
 			T mVar;
 			using Result = typename T;
-			explicit _Body(T const& var) : mVar(var) {}
 		};
 		_Base* mData;
 	public:
@@ -113,6 +81,33 @@ namespace ECS
 				mWorld->entity_id_list.push(mID);
 				mWorld->mEntities.erase(mID);
 			}
+			template<typename T>
+			void disable(void)
+			{
+				auto name = typeid(T).name();
+				assert((mWorld->mCompIDs.count(name), "The component is not registed!"));
+				if (mWorld->mComponents.at(mID).count(mWorld->mCompIDs.at(name)))
+					mKey[mWorld->mCompIDs.at(name)] = false;
+			}
+			template<typename T>
+			void enable(void)
+			{
+				auto name = typeid(T).name();
+				assert((mWorld->mCompIDs.count(name), "The component is not registed!"));
+				if (mWorld->mComponents.at(mID).count(mWorld->mCompIDs.at(name)))
+					mKey[mWorld->mCompIDs.at(name)] = true;
+			}
+			template<typename T>
+			void erase(void)
+			{
+				auto name = typeid(T).name();
+				assert((mWorld->mCompIDs.count(name), "The component is not registed!"));
+				if (mWorld->mComponents.at(mID).count(mWorld->mCompIDs.at(name)))
+				{
+					mKey[mWorld->mCompIDs.at(name)] = false;
+					mWorld->mComponents.at(mID).erase(mWorld->mCompIDs.at(name));
+				}
+			}
 			KeyList& GetKey(void) { return mKey; }
 			bool CheckKey(const KeyList& cmp) const
 			{
@@ -127,7 +122,22 @@ namespace ECS
 
 		std::map<EntityID, Entity> mEntities;
 		std::map<EntityID, std::map<CompID, _Any>> mComponents;
-
+		
+		template<typename _T1>
+		void make_key(KeyList& key) const
+		{
+			using _T = std::remove_pointer_t<_T1>;
+			if (mCompIDs.count(typeid(_T).name()))
+				key[mCompIDs.at(typeid(_T).name())] = true;
+		}
+		template<typename _T1, typename _T2, typename ...Args>
+		void make_key(KeyList& key) const
+		{
+			using _T = std::remove_pointer_t<_T1>;
+			if (mCompIDs.count(typeid(_T).name()))
+				key[mCompIDs.at(typeid(_T).name())] = true;
+			make_key<_T2, Args...>(key);
+		}
 
 		template<typename _Return, class _FUNC, class _TUPLE, size_t N, class F>
 		_Return runSystem(_FUNC& _Func, _TUPLE& values, const EntityID entiyId)
@@ -186,13 +196,35 @@ namespace ECS
 			return mEntities.at(id);
 		}
 		template<typename R, typename ...Args>
-		R system(R(*func)(Args...))
+		std::vector<std::pair<EntityID, R>> system(R(*func)(Args...))
 		{
 			std::tuple<Args...> values;
-			return runSystem<R, R(*)(Args...), std::tuple<Args...>, 0, Args...>(func, values, 2);
+			std::vector<std::pair<EntityID, R>> returns;
+			KeyList duplicated_key;
+			make_key<Args...>(duplicated_key);
+			for (auto& kv : mEntities)
+			{
+				if(kv.second.CheckKey(duplicated_key))
+				returns.emplace_back(
+					std::make_pair(kv.first, runSystem<R, R(*)(Args...), std::tuple<Args...>, 0, Args...>(func, values, kv.first)));
+			}
+			return returns;
+		}
+		template<typename R = void, typename ...Args>
+		void system(void(*func)(Args...))
+		{
+			std::tuple<Args...> values;
+			KeyList duplicated_key;
+			make_key<Args...>(duplicated_key);
+			for (auto& kv : mEntities)
+			{
+				if (kv.second.CheckKey(duplicated_key))
+					runSystem<void, void(*)(Args...), std::tuple<Args...>, 0, Args...>(func, values, kv.first);
+			}
 		}
 		void Show(void)
 		{
+			printf("_________________________________________________________\n");
 			printf("Entity ID  | Key        |");
 			for (const auto& compid : mCompIDs)
 				printf(" %*s |", 11, compid.first.substr(6, 10).c_str());
@@ -214,3 +246,4 @@ namespace ECS
 		}
 	};
 }
+#endif
