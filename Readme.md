@@ -2,11 +2,11 @@ This is simple ECS system for c++\
 The code is just tested for the short examples
 
 - requirements
--- C++ 17
+** C++ 17
 
 - how2install
--- download the header file then add to your cpp
-
+** download the header file then add to your cpp
+** NO BOT ALLOWED!
 - how to use
 ```cpp
 #include "usgecs.h"
