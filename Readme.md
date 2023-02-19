@@ -3,51 +3,45 @@ The code is just tested for the short examples\
 
 - how to use
 ```cpp
-struct AA
+#include "usgecs.h"
+struct Position
 {
-	int x = 0;
+	int x = 1;
 	int y = 1;
 };
 
-struct BB
+struct Velocity
 {
-	int x = 0;
-	int y = 1;
+	int x = 1;
+	int y = 2;
 };
-
-int testA(AA* A) // must pointer type
+//test for void function
+void Move(Position* A, Velocity* B) // must pointer type with non void
 {
-	printf("%d %d", A->x, A->y);
-	A->x = A->x + 1;
-	printf("%d %d", A->x, A->y);
-	printf("Hello world!\n");
-	return 1;
+	printf("1. Origin Position %d %d\n", A->x, A->y);
+	A->x = A->x + B->x;
+	A->y = A->y + B->y;
+	printf("2. New   Position %d %d\n", A->x, A->y);
 }
-int testB(BB* B) // must pointer type
+// test for the order doesn't matter and return vector
+float MoveDis(Velocity* B, Position* A) // must pointer type with non void
 {
-	printf("%d %d", B->x, B->y);
-	B->x = B->x + 1;
-	printf("%d %d", B->x, B->y);
-	printf("Hello world!\n");
-	return 1;
-}
-int testC(AA* A, BB* B)
-{
-	printf("%d %d, %d %d", A->x, A->y, B->x, B->y);
-	printf("Hello world!\n");
-	return A->x + B->x;
+	printf("3. Origin Position %d %d\n", A->x, A->y);
+	A->x = A->x + B->x;
+	A->y = A->y + B->y;
+	printf("4. New   Position %d %d\n", A->x, A->y);
+	return std::sqrtf(A->x * A->x + A->y * A->y);
 }
 
 int main(int argc, char** argv)
 {
 	ECS::World w;
-	w.entity().add<ATest>({1,1});
-	w.entity().add<BTESTTEST>({2,2});
-	w.entity().add<ATest>({3,3}).add<BTESTTEST>({4,4});
+	w.entity().add<Velocity>({ 1,1 }).add<Position>({2,2});
 	w.Show();
-	w.system(testA);
-	w.system(testB);
-	std::cout << "C return is "<< w.system(testC) << std::endl;
+	w.system(Move);
+	auto entityList = w.system(MoveDis);
+	for (const auto& kv : entityList)
+		std::cout << "Entity ID : " << kv.first << " Return value : " << kv.second << std::endl;
 	return 0;
 }
 ```
