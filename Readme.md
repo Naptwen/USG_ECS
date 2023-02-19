@@ -22,6 +22,12 @@ struct Velocity
 	int y = 2;
 };
 //test for void function
+void Test(Position* A) // must pointer type with non void
+{
+	printf("1. Origin Position %d %d\n", A->x, A->y);
+	printf("2. New   Position %d %d\n", A->x, A->y);
+}
+//test for void function
 void Move(Position* A, Velocity* B) // must pointer type with non void
 {
 	printf("1. Origin Position %d %d\n", A->x, A->y);
@@ -42,25 +48,33 @@ float MoveDis(Velocity* B, Position* A) // must pointer type with non void
 int main(int argc, char** argv)
 {
 	ECS::World w;
-	w.entity().add<Velocity>({ 1,1 }).add<Position>({2,2});
+	w.entity().add<Velocity>({ 1,1 }).add<Position>({ 2,2 });
 	w.Show();
-	w.system(Move);
-	auto entityList = w.system(MoveDis);
+	w.system(Test); //test one variable
+	w.system(Move); //test two varialbe
+	auto entityList = w.system(MoveDis); //test unordered
+	int a = 0;
+	//test lambda
+	w.filter<Velocity*>().each([&a](Velocity* A) {std::cout << "Lambda" << std::endl; }); 
+	w.filter<Position*>().each([&a](Position* A) {std::cout << "Lambda" << std::endl; }); 
+	w.filter<Velocity*, Position*>().each([&a](Velocity* A, Position* B) {std::cout << "Lambda" << std::endl; });
 	for (const auto& kv : entityList)
 	{
 		//return test
-		std::cout << "Entity ID : " << kv.first << " Return value : " << kv.second << std::endl;
+		std::cout << "Entity ID : " << kv << std::endl;
+		std::cout << "Posiiton x : " << w.entity(kv).get<Position>().x << std::endl;
+		std::cout << "Position y : " << w.entity(kv).get<Position>().y << std::endl;
 		//disable component test
-		w.entity(kv.first).disable<Position>();
+		w.entity(kv).disable<Position>();
 		w.Show();
 		//disable component test
-		w.entity(kv.first).enable<Position>();
+		w.entity(kv).enable<Position>();
 		w.Show();
 		//erase component test
-		w.entity(kv.first).erase<Position>();
+		w.entity(kv).erase<Position>();
 		w.Show();
 		//remove entity test
-		w.entity(kv.first).remove();
+		w.entity(kv).remove();
 		w.Show();
 	}
 	return 0;
