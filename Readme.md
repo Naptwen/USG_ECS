@@ -1,5 +1,5 @@
 This is simple ECS system for c++\
-The code is just tested for the short examples\
+The code is just tested for the short examples
 
 - how to use
 ```cpp
