@@ -1,6 +1,6 @@
-# GNU Affero License(c) Useop Gim 2023 Feb 19, 2023
-# This is simple ECS system code 
-# The version of c++ > ++17 is required!
+// GNU Affero License(c) Useop Gim 2023 Feb 19, 2023
+// This is simple ECS system code 
+// The version of c++ > ++17 is required!
 
 #ifndef __USG_ECS_H__
 #define __USG_ECS_H__
@@ -246,4 +246,5 @@ namespace ECS
 		}
 	};
 }
+#endif
 #endif
