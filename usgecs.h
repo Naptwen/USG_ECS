@@ -109,8 +109,8 @@ namespace ECS
 			template<typename T>
 			T& get()
 			{
-				auto name = comp_id_list.at(typeid(T).name());
-				return mWorld->mComponents.at(mID).at(name);
+				auto compID = mWorld->mCompIDs.at(typeid(T).name());
+				return std::ref(*mWorld->mComponents.at(mID).at(compID).get<T>());
 			}
 			KeyList& GetKey(void) { return mKey; }
 			bool CheckKey(const KeyList& cmp, size_t num) const
