@@ -41,7 +41,22 @@ int main(int argc, char** argv)
 	w.system(Move);
 	auto entityList = w.system(MoveDis);
 	for (const auto& kv : entityList)
+	{
+		//return test
 		std::cout << "Entity ID : " << kv.first << " Return value : " << kv.second << std::endl;
+		//disable component test
+		w.entity(kv.first).disable<Position>();
+		w.Show();
+		//disable component test
+		w.entity(kv.first).enable<Position>();
+		w.Show();
+		//erase component test
+		w.entity(kv.first).erase<Position>();
+		w.Show();
+		//remove entity test
+		w.entity(kv.first).remove();
+		w.Show();
+	}
 	return 0;
 }
 ```
