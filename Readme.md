@@ -55,13 +55,17 @@ int main(int argc, char** argv)
 	auto entityList = w.system(MoveDis); //test unordered
 	int a = 0;
 	//test lambda
-	w.filter<Velocity>().each([&a](Velocity* A) {std::cout << "Lambda" << std::endl; }); 
-	w.filter<Position>().each([&a](Position* A) {std::cout << "Lambda" << std::endl; }); 
-	w.filter<Velocity, Position>().each([&a](Velocity* A, Position* B) {std::cout << "Lambda" << std::endl; });
+	w.search<Velocity>().each([&a](Velocity* A) {std::cout << "Lambda" << std::endl; }); 
+	w.search<Position>().each([&a](Position* A) {std::cout << "Lambda" << std::endl; }); 
+	w.search<Velocity, Position>().each([&a](Velocity* A, Position* B) {std::cout << "Lambda" << std::endl; });
 	//return test
 	std::cout << "Entity ID : " << 0 << std::endl;
-	std::cout << "Posiiton x : " << w.entity(kv).get<Position>().x << std::endl;
-	std::cout << "Position y : " << w.entity(kv).get<Position>().y << std::endl;
+	std::cout << "Posiiton x : " << w.entity(0).get<Position>().x << std::endl;
+	std::cout << "Position y : " << w.entity(0).get<Position>().y << std::endl;
+	w.entity(0).get<Position>().x  += 10;
+	w.entity(0).get<Position>().y  += 10;
+	std::cout << "Posiiton x : " << w.entity(0).get<Position>().x << std::endl;
+	std::cout << "Position y : " << w.entity(0).get<Position>().y << std::endl;
 	//disable component test
 	w.entity(0).disable<Position>();
 	w.Show();
