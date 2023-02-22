@@ -59,7 +59,7 @@ int main(int argc, char** argv)
 	w.filter<Position>().each([&a](Position* A) {std::cout << "Lambda" << std::endl; }); 
 	w.filter<Velocity, Position>().each([&a](Velocity* A, Position* B) {std::cout << "Lambda" << std::endl; });
 	//return test
-	std::cout << "Entity ID : " << kv << std::endl;
+	std::cout << "Entity ID : " << 0 << std::endl;
 	std::cout << "Posiiton x : " << w.entity(kv).get<Position>().x << std::endl;
 	std::cout << "Position y : " << w.entity(kv).get<Position>().y << std::endl;
 	//disable component test
