@@ -58,25 +58,22 @@ int main(int argc, char** argv)
 	w.filter<Velocity>().each([&a](Velocity* A) {std::cout << "Lambda" << std::endl; }); 
 	w.filter<Position>().each([&a](Position* A) {std::cout << "Lambda" << std::endl; }); 
 	w.filter<Velocity, Position>().each([&a](Velocity* A, Position* B) {std::cout << "Lambda" << std::endl; });
-	for (const auto& kv : entityList)
-	{
-		//return test
-		std::cout << "Entity ID : " << kv << std::endl;
-		std::cout << "Posiiton x : " << w.entity(kv).get<Position>().x << std::endl;
-		std::cout << "Position y : " << w.entity(kv).get<Position>().y << std::endl;
-		//disable component test
-		w.entity(kv).disable<Position>();
-		w.Show();
-		//disable component test
-		w.entity(kv).enable<Position>();
-		w.Show();
-		//erase component test
-		w.entity(kv).erase<Position>();
-		w.Show();
-		//remove entity test
-		w.entity(kv).remove();
-		w.Show();
-	}
+	//return test
+	std::cout << "Entity ID : " << kv << std::endl;
+	std::cout << "Posiiton x : " << w.entity(kv).get<Position>().x << std::endl;
+	std::cout << "Position y : " << w.entity(kv).get<Position>().y << std::endl;
+	//disable component test
+	w.entity(0).disable<Position>();
+	w.Show();
+	//disable component test
+	w.entity(0).enable<Position>();
+	w.Show();
+	//erase component test
+	w.entity(0).erase<Position>();
+	w.Show();
+	//remove entity test
+	w.entity(0).remove();
+	w.Show();
 	return 0;
 }
 ```
