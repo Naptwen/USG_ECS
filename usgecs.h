@@ -118,7 +118,7 @@ namespace ECS
 				size_t same = 0;
 				for (int i = 0; i < MAX_COMPONENTS; ++i)
 					if (mKey[i] == cmp[i]) same++;
-				return (num <= same)? true : false;
+				return (num <= same) ? true : false;
 			}
 		};
 		std::queue<EntityID> entity_id_list;
@@ -127,7 +127,7 @@ namespace ECS
 
 		std::map<EntityID, Entity> mEntities;
 		std::map<EntityID, std::map<CompID, _Any>> mComponents;
-		
+
 		template<typename _T1>
 		void make_key(KeyList& key) const
 		{
@@ -145,7 +145,7 @@ namespace ECS
 		}
 
 		template<class _TUPLE, size_t N, class F>
-		void _filter(_TUPLE& values, const EntityID entiyId) 
+		void _filter(_TUPLE& values, const EntityID entiyId)
 		{
 			using _T1 = std::remove_pointer_t<F>;
 			auto name = typeid(_T1).name();
@@ -223,33 +223,30 @@ namespace ECS
 		struct _Lambda
 		{
 			World* mWorld = nullptr;
+			using ArgsT = std::tuple<Args*...>;
 			_Lambda(World* world) : mWorld(world) {}
 
 			template<typename F>
 			void each(F&& func)
 			{
-				std::vector<std::tuple<Args...>> vec;
 				KeyList duplicated_key;
 				mWorld->make_key<Args...>(duplicated_key);
 				for (auto& kv : mWorld->mEntities)
 				{
 					if (kv.second.CheckKey(duplicated_key, sizeof ...(Args)))
 					{
-						std::tuple<Args...> values;
-						mWorld->_filter<std::tuple<Args...>, 0, Args...>(values, kv.first);
-						vec.emplace_back(values);
+						ArgsT values;
+						mWorld->_filter<ArgsT, 0, Args...>(values, kv.first);
+						std::apply(func, values);
 					}
 				}
-				std::for_each(vec.begin(), vec.end(), [&func](std::tuple<Args...>& _Val) {std::apply(func, _Val); });
 			}
 		};
-
 		template<typename ...Args>
-		_Lambda<Args...> filter(void)
+		_Lambda<Args...> search(void)
 		{
 			return _Lambda<Args...>(this);
 		}
-		
 		void Show(void)
 		{
 			printf("_________________________________________________________\n");
