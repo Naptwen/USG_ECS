@@ -55,9 +55,9 @@ int main(int argc, char** argv)
 	auto entityList = w.system(MoveDis); //test unordered
 	int a = 0;
 	//test lambda
-	w.filter<Velocity*>().each([&a](Velocity* A) {std::cout << "Lambda" << std::endl; }); 
-	w.filter<Position*>().each([&a](Position* A) {std::cout << "Lambda" << std::endl; }); 
-	w.filter<Velocity*, Position*>().each([&a](Velocity* A, Position* B) {std::cout << "Lambda" << std::endl; });
+	w.filter<Velocity>().each([&a](Velocity* A) {std::cout << "Lambda" << std::endl; }); 
+	w.filter<Position>().each([&a](Position* A) {std::cout << "Lambda" << std::endl; }); 
+	w.filter<Velocity, Position>().each([&a](Velocity* A, Position* B) {std::cout << "Lambda" << std::endl; });
 	for (const auto& kv : entityList)
 	{
 		//return test
