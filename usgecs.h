@@ -54,7 +54,8 @@ namespace ECS
 
 	class World
 	{
-	private:
+	
+	public:
 		class Entity
 		{
 		protected:
@@ -71,7 +72,9 @@ namespace ECS
 				mKey[mWorld->getCompID<T>(mID, comp)] = true;
 				return *this;
 			}
+			Entity& Return(void) { return *this; }
 			EntityID& GetID(void) { return mID; }
+			World& GetWorld(void) { return *mWorld; }
 			void remove(void)
 			{
 				assert((mWorld->mEntities.count(mID), "There are no such Entity Id!"));
@@ -117,69 +120,11 @@ namespace ECS
 			{
 				size_t same = 0;
 				for (int i = 0; i < MAX_COMPONENTS; ++i)
-					if (mKey[i] == cmp[i]) same++;
-				return (num <= same) ? true : false;
+					if (mKey[i] & cmp[i]) same++;
+				return (same == num)?true:false;
 			}
 		};
-		std::queue<EntityID> entity_id_list;
-		std::queue<CompID> comp_id_list;
-		std::map<std::string, CompID> mCompIDs;
 
-		std::map<EntityID, Entity> mEntities;
-		std::map<EntityID, std::map<CompID, _Any>> mComponents;
-
-		template<typename _T1>
-		void make_key(KeyList& key) const
-		{
-			using _T = std::remove_pointer_t<_T1>;
-			if (mCompIDs.count(typeid(_T).name()))
-				key[mCompIDs.at(typeid(_T).name())] = true;
-		}
-		template<typename _T1, typename _T2, typename ...Args>
-		void make_key(KeyList& key) const
-		{
-			using _T = std::remove_pointer_t<_T1>;
-			if (mCompIDs.count(typeid(_T).name()))
-				key[mCompIDs.at(typeid(_T).name())] = true;
-			make_key<_T2, Args...>(key);
-		}
-
-		template<class _TUPLE, size_t N, class F>
-		void _filter(_TUPLE& values, const EntityID entiyId)
-		{
-			using _T1 = std::remove_pointer_t<F>;
-			auto name = typeid(_T1).name();
-			auto compId = mCompIDs.at(name);
-			assert((mComponents.at(entiyId).count(compId), "There are no such variable in given Entity"));
-			std::get<N>(values) = mComponents.at(entiyId).at(compId).get<_T1>();
-		}
-		template<class _TUPLE, size_t N, class F, class S, class ...Vars>
-		void _filter(_TUPLE& values, const EntityID entiyId)
-		{
-			using _T1 = std::remove_pointer_t<F>;
-			auto name = typeid(_T1).name();
-			auto compId = mCompIDs.at(name);
-			assert((mComponents.at(entiyId).count(compId), "There are no such variable in given Entity"));
-			mComponents.at(entiyId).at(compId).get<_T1>();
-			std::get<N>(values) = mComponents.at(entiyId).at(compId).get<_T1>();
-			_filter<_TUPLE, N + 1, S, Vars...>(values, entiyId);
-		}
-	protected:
-		template<class T>
-		CompID getCompID(EntityID ID, T comp)
-		{
-			auto _Type = typeid(T).name();
-			if (!mCompIDs.count(_Type))
-			{
-				mCompIDs[_Type] = comp_id_list.front();
-				comp_id_list.pop();
-			}
-			mComponents[ID][mCompIDs[_Type]] = _Any(comp);
-			auto compID = mCompIDs.at(typeid(T).name());
-			return compID;
-		}
-		friend class Entity;
-	public:
 		World()
 		{
 			for (int i = 0; i < MAX_ENTITIES; ++i)
@@ -223,7 +168,7 @@ namespace ECS
 		struct _Lambda
 		{
 			World* mWorld = nullptr;
-			using ArgsT = std::tuple<Args*...>;
+			using pTuple = std::tuple<Args*...>;
 			_Lambda(World* world) : mWorld(world) {}
 
 			template<typename F>
@@ -235,8 +180,26 @@ namespace ECS
 				{
 					if (kv.second.CheckKey(duplicated_key, sizeof ...(Args)))
 					{
-						ArgsT values;
-						mWorld->_filter<ArgsT, 0, Args...>(values, kv.first);
+						pTuple values;
+						mWorld->_filter<pTuple, 0, Args...>(values, kv.first);
+						std::apply(func, values);
+					}
+				}
+			}
+
+			template<typename F>
+			void iter(F&& func)
+			{
+				KeyList duplicated_key;
+				using pETuple = std::tuple<Entity*, Args*...>;
+				mWorld->make_key<Args...>(duplicated_key);
+				for (auto& kv : mWorld->mEntities)
+				{
+					if (kv.second.CheckKey(duplicated_key, sizeof ...(Args)))
+					{
+						pETuple values;
+						std::get<0>(values) = &kv.second;
+						mWorld->_iter<pETuple, 1, Args...>(values, kv.first);
 						std::apply(func, values);
 					}
 				}
@@ -247,6 +210,32 @@ namespace ECS
 		{
 			return _Lambda<Args...>(this);
 		}
+
+		template<class T>
+		std::vector<T*> pick(void)
+		{
+			std::vector<T*> vec;
+			KeyList duplicated_key;
+			make_key<T>(duplicated_key);
+			for (auto& kv : mEntities)
+				if (kv.second.CheckKey(duplicated_key, 1))
+					vec.push_back(&kv.second.get<T>());
+			return vec;
+		}
+
+		template<class T>
+		std::vector<Entity*> select(void)
+		{
+			std::vector<Entity*> vec;
+			KeyList duplicated_key;
+			make_key<T>(duplicated_key);
+			for (auto& kv : mEntities)
+				if (kv.second.CheckKey(duplicated_key, 1))
+					vec.push_back(&kv.second);
+			return vec;
+		}
+
+
 		void Show(void)
 		{
 			printf("_________________________________________________________\n");
@@ -269,6 +258,87 @@ namespace ECS
 				printf("\n");
 			}
 		}
+	private:
+			std::queue<EntityID> entity_id_list;
+			std::queue<CompID> comp_id_list;
+			std::map<std::string, CompID> mCompIDs;
+
+			std::map<EntityID, Entity> mEntities;
+			std::map<EntityID, std::map<CompID, _Any>> mComponents;
+
+			template<typename _T1>
+			void make_key(KeyList& key) const
+			{
+				using _T = std::remove_pointer_t<_T1>;
+				if (mCompIDs.count(typeid(_T).name()))
+					key[mCompIDs.at(typeid(_T).name())] = true;
+				std::cout << key << std::endl;
+			}
+			template<typename _T1, typename _T2, typename ...Args>
+			void make_key(KeyList& key) const
+			{
+				using _T = std::remove_pointer_t<_T1>;
+				if (mCompIDs.count(typeid(_T).name()))
+					key[mCompIDs.at(typeid(_T).name())] = true;
+				make_key<_T2, Args...>(key);
+			}
+
+			template<class _TUPLE, size_t N, class F>
+			void _filter(_TUPLE& values, const EntityID entiyId)
+			{
+				using _T1 = std::remove_pointer_t<F>;
+				auto name = typeid(_T1).name();
+				auto compId = mCompIDs.at(name);
+				assert((mComponents.at(entiyId).count(compId), "There are no such variable in given Entity"));
+				std::get<N>(values) = mComponents.at(entiyId).at(compId).get<_T1>();
+			}
+			template<class _TUPLE, size_t N, class F, class S, class ...Vars>
+			void _filter(_TUPLE& values, const EntityID entiyId)
+			{
+				using _T1 = std::remove_pointer_t<F>;
+				auto name = typeid(_T1).name();
+				auto compId = mCompIDs.at(name);
+				assert((mComponents.at(entiyId).count(compId), "There are no such variable in given Entity"));
+				mComponents.at(entiyId).at(compId).get<_T1>();
+				std::get<N>(values) = mComponents.at(entiyId).at(compId).get<_T1>();
+				_filter<_TUPLE, N + 1, S, Vars...>(values, entiyId);
+			}
+
+			template<class _TUPLE, size_t N, class F>
+			void _iter(_TUPLE& values, const EntityID entiyId)
+			{
+				using _T1 = std::remove_pointer_t<F>;
+				auto name = typeid(_T1).name();
+				auto compId = mCompIDs.at(name);
+				assert((mComponents.at(entiyId).count(compId), "There are no such variable in given Entity"));
+				std::get<N>(values) = mComponents.at(entiyId).at(compId).get<_T1>();
+			}
+			template<class _TUPLE, size_t N, class F, class S, class ...Vars>
+			void _iter(_TUPLE& values, const EntityID entiyId)
+			{
+				using _T1 = std::remove_pointer_t<F>;
+				auto name = typeid(_T1).name();
+				auto compId = mCompIDs.at(name);
+				assert((mComponents.at(entiyId).count(compId), "There are no such variable in given Entity"));
+				mComponents.at(entiyId).at(compId).get<_T1>();
+				std::get<N>(values) = mComponents.at(entiyId).at(compId).get<_T1>();
+				_filter<_TUPLE, N + 1, S, Vars...>(values, entiyId);
+			}
+	protected:
+		template<class T>
+		CompID getCompID(EntityID ID, T comp)
+		{
+			auto _Type = typeid(T).name();
+			if (!mCompIDs.count(_Type))
+			{
+				mCompIDs[_Type] = comp_id_list.front();
+				comp_id_list.pop();
+			}
+			mComponents[ID][mCompIDs[_Type]] = _Any(comp);
+			auto compID = mCompIDs.at(typeid(T).name());
+			return compID;
+		}
+		friend class Entity;
 	};
 }
 #endif
