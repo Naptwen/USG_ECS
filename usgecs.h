@@ -272,7 +272,6 @@ namespace ECS
 				using _T = std::remove_pointer_t<_T1>;
 				if (mCompIDs.count(typeid(_T).name()))
 					key[mCompIDs.at(typeid(_T).name())] = true;
-				std::cout << key << std::endl;
 			}
 			template<typename _T1, typename _T2, typename ...Args>
 			void make_key(KeyList& key) const
