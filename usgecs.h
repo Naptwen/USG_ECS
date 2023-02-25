@@ -110,10 +110,14 @@ namespace ECS
 				}
 			}
 			template<typename T>
-			T& get()
+			T* get()
 			{
-				auto compID = mWorld->mCompIDs.at(typeid(T).name());
-				return std::ref(*mWorld->mComponents.at(mID).at(compID).get<T>());
+				if (mWorld->mCompIDs.count(typeid(T).name()))
+				{
+					auto compID = mWorld->mCompIDs.at(typeid(T).name());
+					return mWorld->mComponents.at(mID).at(compID).get<T>();
+				}
+				return nullptr;
 			}
 			KeyList& GetKey(void) { return mKey; }
 			bool CheckKey(const KeyList& cmp, size_t num) const
@@ -121,7 +125,7 @@ namespace ECS
 				size_t same = 0;
 				for (int i = 0; i < MAX_COMPONENTS; ++i)
 					if (mKey[i] & cmp[i]) same++;
-				return (same == num)?true:false;
+				return (same >= num)?true:false;
 			}
 		};
 
@@ -164,6 +168,7 @@ namespace ECS
 			std::for_each(vec.begin(), vec.end(), [&func](std::tuple<Args...>& _Val) {std::apply(func, _Val); });
 			return entityID;
 		}
+		
 		template<typename ...Args>
 		struct _Lambda
 		{
@@ -186,9 +191,8 @@ namespace ECS
 					}
 				}
 			}
-
 			template<typename F>
-			void iter(F&& func)
+			void foreach(F&& func)
 			{
 				KeyList duplicated_key;
 				using pETuple = std::tuple<Entity*, Args*...>;
@@ -204,6 +208,7 @@ namespace ECS
 					}
 				}
 			}
+
 		};
 		template<typename ...Args>
 		_Lambda<Args...> search(void)
@@ -211,15 +216,40 @@ namespace ECS
 			return _Lambda<Args...>(this);
 		}
 
-		template<class T>
-		std::vector<T*> pick(void)
+		template<typename T>
+		struct _Alpha
+		{
+			World* mWorld = nullptr;
+			std::vector<T*> mValues;
+			_Alpha(World* world, std::vector<T*> values) : mWorld(world), mValues(values) {}
+
+			template<typename F>
+			void each(F&& func)
+			{
+				func(mValues);
+			}
+		};
+		template<typename T>
+		_Alpha<T> pickall(void)
 		{
 			std::vector<T*> vec;
 			KeyList duplicated_key;
 			make_key<T>(duplicated_key);
 			for (auto& kv : mEntities)
 				if (kv.second.CheckKey(duplicated_key, 1))
-					vec.push_back(&kv.second.get<T>());
+					vec.emplace_back(kv.second.get<T>());
+			return _Alpha<T>(this, vec);
+		}
+
+		template<class T>
+		std::vector<T*> every(void)
+		{
+			std::vector<T*> vec;
+			KeyList duplicated_key;
+			make_key<T>(duplicated_key);
+			for (auto& kv : mEntities)
+				if (kv.second.CheckKey(duplicated_key, 1))
+					vec.emplace_back(kv.second.get<T>());
 			return vec;
 		}
 
@@ -228,10 +258,11 @@ namespace ECS
 		{
 			std::vector<Entity*> vec;
 			KeyList duplicated_key;
+			auto test = typeid(T).name();
 			make_key<T>(duplicated_key);
 			for (auto& kv : mEntities)
 				if (kv.second.CheckKey(duplicated_key, 1))
-					vec.push_back(&kv.second);
+					vec.emplace_back(&kv.second);
 			return vec;
 		}
 
