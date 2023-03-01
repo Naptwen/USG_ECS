@@ -115,7 +115,8 @@ namespace ECS
 				if (mWorld->mCompIDs.count(typeid(T).name()))
 				{
 					auto compID = mWorld->mCompIDs.at(typeid(T).name());
-					return mWorld->mComponents.at(mID).at(compID).get<T>();
+					if(mWorld->mComponents.at(mID).count(compID))
+						return mWorld->mComponents.at(mID).at(compID).get<T>();
 				}
 				return nullptr;
 			}
@@ -301,6 +302,7 @@ namespace ECS
 			void make_key(KeyList& key) const
 			{
 				using _T = std::remove_pointer_t<_T1>;
+
 				if (mCompIDs.count(typeid(_T).name()))
 					key[mCompIDs.at(typeid(_T).name())] = true;
 			}
