@@ -10,6 +10,7 @@
 #include <utility>
 #include <unordered_map>
 #include <iostream>
+#include <typeindex>
 
 #if __cplusplus >= 201703L
 #include <any>
