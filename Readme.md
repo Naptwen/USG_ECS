@@ -21,6 +21,63 @@ The code is just tested for the short examples
 - how2install
 ** download the header file then add to your cpp
 ** NO BOT ALLOWED!
+
+-  New ECS system in c++17 BaseHashTableEcs
+```cpp
+#include "BaseHashTableECS.h"
+
+struct Player {
+    int HP = 5;
+    bool ATK = false;
+    float DEF = 2.5f;
+    int LUK = 1;
+};
+
+struct Enemy {
+    int HP = 10;
+    int ATK = 5;
+    int DEF = 3;
+    int LUK = 2;
+};
+
+void test(Player* player, Enemy* enemy){
+	std::cout << "test\n";
+	std::cout << player->DEF << std::endl;
+	std::cout << enemy->DEF << std::endl;
+	player->DEF += 1.5f;
+	std::cout << player->DEF << std::endl;
+	std::cout << enemy->DEF << std::endl;
+}
+
+void test2(Player player, Enemy enemy){
+	std::cout << "test2\n";
+	std::cout << player.DEF << std::endl;
+	std::cout << enemy.DEF << std::endl;
+}
+
+void addTest(HASH_TABLE& hash_table){
+	Player test1;
+	Enemy test2;
+	hash_table.Add<Player, Enemy>("PlayerA", test1, test2);
+	hash_table.Add<Player>("PlayerB", test1);
+	hash_table.Add<Enemy, Player>("Enemy", test2, test1);
+}
+
+int main(int argc, char** argv) {
+	
+	HASH_TABLE hash_table;
+	addTest(hash_table);
+	hash_table.Delete("Enemy");
+	hash_table.Filter<Player*, Enemy*>(test);
+	hash_table.Filter<Player, Enemy>(test2);
+
+    getchar();
+
+	
+	return 0;
+}
+```
+
 - how to use
 ```cpp
 #include "usgecs.h"
