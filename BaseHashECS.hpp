@@ -10,10 +10,9 @@
 #include <utility>
 #include <unordered_map>
 #include <iostream>
-#include <any>
-#include <functional>
 
 #if __cplusplus >= 201703L
+#include <any>
 
 using _usg_componets = std::unordered_map<std::type_index, std::any>;
 using _usg_buckets = std::unordered_map<std::string_view,_usg_componets>;
