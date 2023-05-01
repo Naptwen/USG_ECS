@@ -3,8 +3,7 @@ WoodCutter image license OGA-BY 3.0 License\
 Author CraftPix.net 2D Game Assets\
 
 # testing 3D now
-![test3d](https://user-images.githubusercontent.com/47798805/234048463-df949f8a-aaf1-4c85-b3e4-5c40078f6de6.gif)
-![image](https://user-images.githubusercontent.com/47798805/234343183-da48b65d-63a3-443c-b524-afe35ae4230b.png)
+![test3d](https://user-images.githubusercontent.com/47798805/235448616-0d4eb17e-be0f-4c45-bd6e-821e6709f8e4.gif)
 
 
 
