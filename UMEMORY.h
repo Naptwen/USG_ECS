@@ -1,6 +1,6 @@
 #ifndef __UMEMORY_HPP__
 #define __UMEMORY_HPP__
-/* USG (c) July 16th, 2023. 
+/* USG (c) July 16th, 2023.
 Permission is hereby granted, free of charge, to any person
 obtaining a copy of this software and associated documentation
 files (the "Software"), to deal in the Software without
@@ -80,146 +80,125 @@ typedef unsigned char _BTYPE;
 #define ULOG(COLOR, TEXT, ...) 
 #endif
 
+#define _UM umemory:: 
+
 namespace umemory
 {
-  // To control the each memory for any type of the data
 	typedef class uecs_any_with_key
 	{
 	protected:
 		_BTYPE* memory = nullptr;
-		_BTYPE* _cur_ptr = nullptr;
+		_BTYPE* cur_ptr = nullptr;
 		size_t memory_sz = 0;
-		unsigned long long _key;
+		int* ref = nullptr;
+
 		void HEADINFO(void* ptr)
 		{
-			ULOG(UINFO, "current ptr		[%p]", _PTR(ptr));
-			ULOG(UINFO, "Header			[0x%p]", _HDPTR(ptr));
+			ULOG(UERROR, "The warraper		[%p]", this);
+			ULOG(UINFO, "Header			[%p]", _HDPTR(ptr));
+			ULOG(UPOINT, "current ptr		[%p]", _PTR(ptr));
 			ULOG(UPOINT, "Memory Size		[%lld]", memory_sz);
 			ULOG(UWARNING, "Total Size		[%d]", _GETSZ(_HDPTR(ptr)) + 1 + _GETPAD(_HDPTR(ptr)));
-			ULOG(UERROR, "Data Size		[%d]", (int)(_GETSZ(_HDPTR(ptr))));
+			ULOG(UWARNING, "Data Size		[%d]", (int)(_GETSZ(_HDPTR(ptr))));
 			//ULOG(UERROR, "KEY			[%s]", GETKEY());
 			ULOG(UINFO, "Padding			[%d]", _GETPAD(_HDPTR(ptr)));
 			ULOG(UINFO, "AVALIABLE		[%d]", _ISUSE(_HDPTR(ptr)));
-
 		}
 		void CREATCHUNK(const _BTYPE size)
 		{
-			_PUT(_cur_ptr, _PACK(0, 1));
-			_cur_ptr += _UWSIZE;
-			_PUT(_HDPTR(_cur_ptr), _PACK(size, 1));
+			_PUT(cur_ptr, _PACK(0, 1));
+			cur_ptr += _UWSIZE;
+			_PUT(_HDPTR(cur_ptr), _PACK(size, 1));
 		}
-		template<typename T>
-		void SETDATA(T obj)
+		template<typename T> void SETDATA(T obj)
 		{
-			*(reinterpret_cast<T*>(_cur_ptr)) = obj;
+			*(reinterpret_cast<T*>(cur_ptr)) = obj;
 		}
 		void NEXTCHUNK(_BTYPE*& _ptr)
 		{
 			_ptr = _PREV_HDPTR(_ptr);
-			//HEADINFO();
 		}
-		_BTYPE* GETDATA(unsinged int indent)
+		_BTYPE* GETDATA()
 		{
-			return (_PTR(_cur_ptr) + indent);
+			if (cur_ptr == memory)
+				cur_ptr = memory + _UWSIZE;
+			return ((cur_ptr));
 		}
 	public:
-		uecs_any_with_key(void) = default;
-		// parameter constructor
-		uecs_any_with_key(_BTYPE* memory,
-						  _BTYPE* _cur_ptr,
-						  size_t memory_sz,
-						  unsigned long long _key)
-		{
-			this->_cur_ptr = _cur_ptr;
-			this->memory = memory;
-			this->memory_sz = memory_sz;
-			this->_key = _key;
-		}
-		// copy constructor (lvalue : const structure)
-		uecs_any_with_key(const uecs_any_with_key& other) :
-			uecs_any_with_key(other.memory,
-							  other._cur_ptr, 
-							  other.memory_sz,
-							  other._key) {};
-
-		// move constructor (rvlaue : temp structure)
-		uecs_any_with_key(uecs_any_with_key&& other) noexcept
-		{
-			this->memory_sz		= std::exchange(other.memory_sz, NULL);
-			this->_cur_ptr		= std::exchange(other._cur_ptr, nullptr);
-			this->memory		= std::exchange(other.memory, nullptr);
-			this->_key			= std::exchange(other._key, NULL);
-		}
-		//copy assigment (lvalue : cont structure)
-		uecs_any_with_key& operator = (uecs_any_with_key const& other)
-		{
-			return *this = uecs_any_with_key(other);
-		}
-		//move assigment (rvalue : temp structure)
-		uecs_any_with_key& operator = (uecs_any_with_key&& other) noexcept
-		{
-			std::swap(memory, other.memory);
-			std::swap(_cur_ptr, other._cur_ptr);
-			std::swap(memory_sz, other.memory_sz);
-			std::swap(_key, other._key);
-			return *this;
-		}
-    //To save the key
+		// default constructor
+		uecs_any_with_key(void) : ref(new int(1)) {}
+		// template constructor
 		template<typename T>
-		uecs_any_with_key(T obj, unsigned long long key = 0)
-		{			
-			memory_sz = (sizeof(T) + 1) + _MOD( (sizeof(T) + 1), _OSBYTE);
+		uecs_any_with_key(T obj, unsigned long long _key = 0) : ref(new int(1))
+		{
+			memory_sz = (sizeof(T) + 1) + _MOD((sizeof(T) + 1), _OSBYTE);
 			memory = new _BTYPE[memory_sz];
-			_cur_ptr = memory;
-			_key = key;
+			cur_ptr = memory;
 			_BTYPE dataSize = ((_BTYPE)(sizeof(T)));
 			if (dataSize == 0) return;
 			CREATCHUNK(dataSize);
 			SETDATA(obj);
-			HEADINFO(_cur_ptr);
 		}
-    //Wehn destruction
+		// copy constructor (lvalue : const structure)
+		uecs_any_with_key(uecs_any_with_key const& other) : 
+		memory(other.memory), cur_ptr(other.memory), memory_sz(other.memory_sz),ref(other.ref) 
+		{
+			(*ref)++;
+		}
+		// move constructor (rvlaue : temp structure)
+		uecs_any_with_key(uecs_any_with_key&& other) noexcept
+		{
+			this->memory	= std::exchange(other.memory, nullptr);
+			this->memory_sz = std::exchange(other.memory_sz, 0);
+			this->cur_ptr	= std::exchange(other.cur_ptr, nullptr);
+			this->ref		= std::exchange(other.ref, nullptr);
+		}
+		// copy assigment (lvalue : const structure)
+		uecs_any_with_key& operator = (uecs_any_with_key const& other)
+		{
+			return *this = uecs_any_with_key(other);
+		}
+		// move assigment (rvalue : temp structure)
+		uecs_any_with_key& operator = (uecs_any_with_key&& other) noexcept
+		{
+			this->memory	= std::exchange(other.memory, nullptr);
+			this->memory_sz = std::exchange(other.memory_sz, 0);
+			this->cur_ptr	= std::exchange(other.cur_ptr, nullptr);
+			this->ref		= std::exchange(other.ref, nullptr);
+			return *this;
+		}
+		// destruction
 		~uecs_any_with_key()
 		{
-			_cur_ptr = nullptr; //first remove the current pointer 
-			memory_sz = 0;
-			if (memory != nullptr)
+			if (ref == nullptr || (*ref) == 0)
 			{
-				delete[] memory;
-				memory = nullptr;
-			}				
+				delete ref;
+				cur_ptr = nullptr;
+				memory_sz = 0;
+				if (memory != nullptr)
+				{
+					delete[] memory;
+					memory = nullptr;
+				}
+			}
+			else if(ref != nullptr)
+			{
+				--(*ref);
+			}
 		}
-    //When set the new memory
-		template<typename T>
-		void SET(T obj, unsigned long long key = 0)
+
+		template<typename T> T& GET()
 		{
-			_cur_ptr = nullptr;
-			delete[] memory;
-			memory = new _BTYPE[sizeof(T) + 2];
-			_cur_ptr = memory;
-			_key = key;
-			_BTYPE dataSize = ((_BTYPE)(sizeof(T)));
-			CREATCHUNK(dataSize);
-			SETDATA<T>(obj);
+			return *reinterpret_cast<T*>(GETDATA());
 		}
-    //To get the data 
-		template<typename T> T& GET(unsinged int indent)
-		{
-			return *reinterpret_cast<T*>(GETDATA(indent));
-		}
-    //To confirm the memory allocation and the data size
 		void SHOWINFO()
 		{
-			HEADINFO(_cur_ptr);
-		}
-		unsigned long long GETKEY()
-		{
-			return _key;
+			HEADINFO(cur_ptr);
 		}
 	protected:
 	} UANY;
 
-  // For the future work
+
 	struct uany
 	{
 		struct _base {};
@@ -249,9 +228,7 @@ namespace umemory
 	inline bool operator == (upair<T1, T2> const& d1, upair<U1, U2> const& d2) { return d1.v1() == d2.v1() && d1.v2() == d2.v2(); }
 	template<typename T1, typename T2, typename U1, typename U2>
 	inline bool operator != (upair<T1, T2> const& d1, upair<U1, U2> const& d2) { return !(d1 == d2); }
-	template<typename T1, typename T2> inline upair<T1, T2> make_upair (T1 const & a, T2 const & b) { return upair<T1, T2>(a,b); }
-	template<typename _Type>size_t uecs_get_type_id() { return sizeof(_Type) + sizeof(uecs_impl_type(_Type)); }
-
+	template<typename T1, typename T2> inline upair<T1, T2> umake_pair (T1 const & a, T2 const & b) { return upair<T1, T2>(a,b); }
 }
 
 #endif
