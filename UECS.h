@@ -1,9 +1,11 @@
-#ifndef __UECS_HPP__
+#ifndef __UECS_HPP__	
 #define __UECS_HPP__
 #include "UMEMORY.h"
 #include <queue>
-#include <set>
+#include <unordered_set>
 #include <map>
+#include <unordered_map>
+#include <random>
 /* USG (c) July 16th, 2023.
 Permission is hereby granted, free of charge, to any person
 obtaining a copy of this software and associated documentation
@@ -26,179 +28,271 @@ OTHER DEALINGS IN THE SOFTWARE.
 */
 namespace uecs
 {
-	typedef unsigned long long entity_id;
-	typedef unsigned long long component_key;
-	typedef std::map<int, std::vector<_UM UANY*>> system_comps;
-
-	static component_key key_max = 0;
-	static std::map<const char*, component_key> regitKeys;
-	template<typename T> static component_key find_key(void)
+	enum class PHASE
 	{
-		if (regitKeys.find(typeid(T).name()) == regitKeys.end())
-			regitKeys.insert(std::make_pair(typeid(T).name(), (++key_max)));
-		ULOG(UERROR, "GET KEY[%s] IS [%d]", typeid(T).name(), regitKeys.at(typeid(T).name()));
-		return regitKeys.at(typeid(T).name());
+		Awake = 717,
+		OnStart,
+		Start,
+		OffStart,
+		OnUpdate,
+		Update,
+		OffUpdate,
+		Disalbe
+	};
+
+	using entity_id = uint32_t;
+	using component_type_id = uint32_t;
+	using component_id = uint32_t;
+	using data_index = std::pair<entity_id, component_type_id>;
+
+	using phase = const char*;
+	using type_id_list = std::unordered_set<component_type_id>;
+
+	struct PairHash {
+		template <class T1, class T2>
+		std::size_t operator()(const std::pair<T1, T2>& p) const {
+			auto h1 = std::hash<T1>{}(p.first);
+			auto h2 = std::hash<T2>{}(p.second);
+			return h1 ^ h2;
+		}
+	};
+
+	struct PairEqual {
+		template <class T1, class T2>
+		bool operator()(const std::pair<T1, T2>& lhs, const std::pair<T1, T2>& rhs) const {
+			// 해당 PairEqual 구조체의 비교 함수를 정의
+			return lhs.first == rhs.first && lhs.second == rhs.second;
+		}
+	};
+
+	uint32_t hash_bytes(const void* ptr, size_t size) 
+	{
+		uint32_t hash = 5381;
+		const unsigned char* byte_ptr = (const unsigned char*)ptr;
+		for (size_t i = 0; i < size; ++i) {
+			hash = ((hash << 5) + hash) + byte_ptr[i]; // DJB2 해시 함수
+		}
+		return hash;
 	}
 
-	class world
+	uint32_t getHash(const char* name)
 	{
-	private:
-		entity_id id_max = 100;
-		void check_id(void)
-		{
-			if (entity_id_list.empty())
-				for (entity_id i = id_max; i < id_max * 2; ++i)
-					entity_id_list.push(i);
-		}
-	protected:
-		std::queue<entity_id> entity_id_list;
+		return hash_bytes(name, sizeof(name));
+	}
+
+	struct World
+	{
+
 	public:
 
-		struct Entity
+		struct Entity  // has unique id and components id
 		{
-		private:
-			world* world = nullptr;
-			entity_id id = 0;
-		public:
-			Entity(uecs::world* _world, entity_id _id) : world(_world), id(_id) {};
-			Entity(const Entity& other) : Entity(other.world, other.id){};
-			Entity(Entity&& other) noexcept
-			{
-				world	= std::exchange(other.world, nullptr);
-				id		= std::exchange(other.id, 0);
-			}
-			Entity& operator = (Entity const& other)
-			{
-				return *this = Entity(other);
-			}
-			Entity& operator = (Entity&& other) noexcept
-			{
-				world	=	std::exchange(other.world, nullptr);
-				id		=	std::exchange(other.id, 0);
-				return *this;
-			}
-			~Entity()
-			{
-				world = nullptr;
-			}
+			World* world;
+			entity_id id;
+			type_id_list types;
+			Entity() : world(nullptr) {}
+			Entity(World* world, entity_id id, type_id_list types) : world(world), id(id), types(types) {}
+			rule2(Entity) : Entity(other.world, other.id, other.types) {}
+			rule3(Entity) { world = std::exchange(other.world, world); id = std::exchange(other.id, 0); types = std::exchange(other.types, {}); }
+			rule4(Entity) { return *this = Entity(other.world, other.id, other.types); }
+			rule5(Entity) { world = std::exchange(other.world, world); id = std::exchange(other.id, 0); types = std::exchange(other.types, {});  return *this; }
 
-			template<typename T> Entity& SET(T comp)
-			{
-				world->SetComp(this, comp);
-				return *this;
-			}
-			const entity_id get_id(void)
-			{
-				return id;
-			}
-			uecs::world* const get_world(void)
-			{
-				return this->world;
-			}
-			template<typename T> T& GET()
-			{
-				return world->GetComp<T>(this);
-			}
-			void remove(void)
-			{
-				world->remove(id);
-			}
-		};
-
-		std::map<entity_id,	_UM UANY> entities;
-		std::map<std::pair<entity_id, component_key>, _UM UANY> components;
-
-		world(void)
-		{
-			for (entity_id i = 1; i < id_max; ++i)
-			{
-				entity_id_list.push(i);
-			}
-		}
-		Entity& entity(void)
-		{			
-			check_id();
-			entity_id id = entity_id_list.front();
-			entity_id_list.pop();
-			entities[id] = _UM UANY(Entity({ this, id }));
-			return entities.at(id).GET<Entity>();
-		}
-		Entity& entity(entity_id id)
-		{
-			return entities.at(id).GET<Entity>();
-		}
-
-		template<typename T>
-		world& SetComp(Entity* const it, T& const comp) noexcept
-		{
-			component_key key = find_key<T>();
-			components[std::make_pair(it->get_id(), key)] = _UM UANY(comp);
-			return *this;
-		}
-		template<typename T>
-		T& GetComp(Entity* const it)
-		{
-			component_key key = find_key<T>();				
-			return components[key][it->get_id()].GET<T>();
-		}
-
-		struct Table
-		{
 			template<typename T>
-			void GetKey(std::vector<component_key>& keys)
+			Entity& set(T const& comp)
 			{
-				component_key key = find_key<T>();
-				keys.emplace_back(key);
+				world->set(id, comp);
+				types.insert(getHash(typeid(T).name()));
+				return *this;
 			}
-			template<typename T, typename F>
-			void GetKey(std::vector<component_key>& keys)
+
+			template<typename T>
+			T* get()
 			{
-				component_key key1 = find_key<T>();
-				component_key key2 = find_key<F>();
-				keys.emplace_back(key1);
-				keys.emplace_back(key2);
+				return world->get<T>(id);
 			}
-			template<typename T, typename ...Args>
-			void GetKey(std::vector<component_key>& keys)
+
+			template<typename T>
+			void remove()
 			{
-				component_key key = find_key<T>();
-				keys.emplace_back(key);
-				GetKey<Args...>(keys);
+				world->remove<T>(id);
+				types.erase( types.find( getHash( typeid(T).name() ) ) );
+			}
+		};
+	private:
+		struct Comp
+		{
+			umemory::UANY comp;
+			Comp() = default;
+			Comp(umemory::UANY comp) : comp(comp) {}
+			rule2(Comp) : Comp(other.comp) {}
+			rule3(Comp) { std::swap(other.comp, comp); }
+			rule4(Comp) { return *this = Comp(other.comp); }
+			rule5(Comp) { std::swap(other.comp, comp); return *this; }
+			template<typename T>
+			Comp(T& data)
+			{
+				comp = umemory::UANY<T>(data);
 			}
 		};
 
+		using systemfn = void(*)(Entity&);
+		mutable std::unordered_map<entity_id, Entity> entities;
+		mutable std::unordered_map<data_index, Comp, PairHash> component_list;
+		std::queue<uint32_t> unique_id_q;
 
-		bool IsKeyInKeys(const std::vector<component_key>& vec, const std::set<component_key>& s) {
-			return std::all_of(vec.begin(), vec.end(), [&s](int value) {
-				return s.find(value) != s.end();
-				});
+		struct System
+		{
+			World* world = nullptr;
+			systemfn func = nullptr;
+			type_id_list types;
+			bool active = true;
+
+			System(World* world, systemfn func, type_id_list types, bool active = true) : world(world), func(func), types(types), active(active) {}
+			rule2(System) : System(other.world, other.func, other.types, other.active) {}
+			rule3(System) { std::swap(other.world, world); std::swap(other.func, func); std::swap(other.types, types); std::swap(other.active, active); }
+			rule4(System) { return *this = System(other.world, other.func, other.types, other.active); }
+			rule5(System) { std::swap(other.world, world); std::swap(other.func, func); std::swap(other.types, types); std::swap(other.active, active); return *this; }
+			
+			bool operator == (System const& other)
+			{
+				return func == other.func;
+			}
+
+			bool operator == (systemfn const& func)
+			{
+				return func == func;
+			}
+
+			void run() 
+			{
+				if (active)
+				{
+					for (auto& temp : world->entities)
+					{
+						if (temp.second.types == types)
+						{
+							func(temp.second);
+						}	
+					}	
+				}					
+			}
+			void disable()
+			{
+				active = false;
+			}
+			void enable()
+			{
+				active = true;
+			}
+		};
+
+		mutable std::map<PHASE, std::vector<System>> systems;
+
+		template<typename T>
+		void getTypeName(type_id_list& type_list) {
+			type_list.insert(getHash(typeid(T).name()));
 		}
+
+		template<typename T, typename ...Args>
+		typename std::enable_if<(sizeof...(Args) != 0)>::type
+			getTypeName(type_id_list& type_list) {
+			type_list.insert(getHash(typeid(T).name()));
+			getTypeName<Args...>(type_list);
+		}
+	public:
+
+		template<typename T>
+		void set(entity_id entity_id, T const& data)
+		{	
+			// Setting component
+			component_type_id type_id = getHash(typeid(T).name());
+			data_index data_id = std::make_pair(entity_id, type_id);
+			UASSERT(component_list.find(data_id) == component_list.end(), "unique comp id already exists!");
+			component_list[data_id] = Comp(umemory::UANY(data));
+		}
+
+		template<typename T>
+		T* get(entity_id entity_id)
+		{
+			component_type_id type_id = getHash(typeid(T).name());
+			data_index data_id = std::make_pair(entity_id, type_id);
+			UASSERT(component_list.find(data_id) != component_list.end(), "entity %d doesn't have given %s component!", entity_id, typeid(T).name());
+			return component_list.at(data_id).comp.Get<T>();
+		}
+
+		template<typename T>
+		void remove(entity_id entity_id)
+		{
+			component_type_id type_id = getHash(typeid(T).name());
+			data_index data_id = std::make_pair(entity_id, type_id);
+			UASSERT(component_list.find(data_id) == component_list.end(), "entity doesn't have given component!");
+			component_list.erase(component_list.find(data_id));
+		}
+
 		template<typename ...Args>
-		void SYSTEM()
+		void system(systemfn func, PHASE Phase)
 		{
-			std::vector<component_key> keys;
-			//Table::GetKey<Args...>(keys);
-			//std::vector<entity_id> trg;
-			//for (auto entity : entities)
-			//{
-			//	if (IsKeyInKeys(keys, *(entity.second).GET<Entity>().get_keys()))
-			//		trg.emplace_back(entity.first);
-			//}
-			//	
-			//printf("test");
-			//for (auto src : trg)
-			//{
-			//	printf("%d", src);
-			//}
+			type_id_list type_list;
+			getTypeName<Args...>(type_list);
+			System sys(this, func, type_list);
+			systems[Phase].emplace_back(sys);
 		}
 
-		void remove(entity_id id)
+		void sys_disable(systemfn func, PHASE Phase)
 		{
-			ULOG(UPOINT, "Entity Remove [%lld]", id);
-			entities.erase(id);
+			auto trg = std::find(systems[Phase].begin(), systems[Phase].end(), func);
+			if(trg != systems[Phase].end())
+				(*trg).disable();
 		}
 
+		void sys_enable(systemfn func, PHASE Phase)
+		{
+			auto trg = std::find(systems[Phase].begin(), systems[Phase].end(), func);
+			if (trg != systems[Phase].end())
+				trg->enable();
+		}
+
+		World()
+		{
+			for (uint32_t i = 1; i < 100; ++i) 
+			{
+				unique_id_q.push(i);
+			}
+		}
+		
+		Entity& entity()
+		{
+			entity_id id = unique_id_q.front(); 
+			unique_id_q.pop();
+			UASSERT(entities.count(id) == 0, "unique id already exists");
+			entities[id] = Entity(this, id, {});
+			return entities.at(id);
+		}
+
+		Entity& entity(const char* name)
+		{			
+			entity_id id = getHash(name);
+			UASSERT(entities.count(id) == 0, "hash id already exists");
+			entities[id] = Entity(this, id, {});
+			return entities.at(id);
+		}
+
+		void progress()
+		{
+			for (auto& phase : systems)
+			{
+				for (auto& sys : phase.second)
+				{
+					sys.run();
+					if (phase.first != PHASE::OffUpdate && phase.first != PHASE::Update && phase.first != PHASE::OnUpdate)
+					{
+						sys.disable();
+					}	
+				}
+			}
+		}
 	};
+
 }
 
 #endif
