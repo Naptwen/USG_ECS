@@ -58,19 +58,6 @@ void move(uecs::Entity& e)
    e.get<Position>()->py += e.get<Velocity>()->vy;
    std::cout << "move position : " << e.get<Position>()->px << " " << e.get<Position>()->py << std::endl;
 }
-
-void collision(uecs::Entity& e)
-{
-    auto monster_x = e.get_world()->entity("monster").get<Position>()->px;
-    auto monster_y = e.get_world()->entity("monster").get<Position>()->py;
-    // if monster position is equal to the player position
-    if (e.get<Position>()->px == monster_x && e.get<Position>()->py == monster_y)
-    {
-        // destroy monster entity
-        e.get_world()->entity("monster").destroy();
-    }
-}
-
 int main() {
     std::cout << "Hello ECS" << std::endl;
 
