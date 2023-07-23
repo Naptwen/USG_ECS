@@ -1,3 +1,7 @@
+#  :pushpin: Version 1.0.1
+USG (c) July 16th, 2023.
+
+# :stuck_out_tongue_winking_eye: Introduction
 This ecs library draws significant inspiration from the fantastic "flecs" library by SanderMertens, 
 which is written in C and C++ and has been a valuable resource. 
 Despite the possibility of unpredictable errors in the current version, 
@@ -6,20 +10,21 @@ With this ecs system, I efficiently manage entities, components, and systems, st
 Thanks to "flecs" and its influence, my own ecs implementation has been a useful for my development process.
 
 
-- requirements
+# :snowflake: Requirements
 * C++ 11
 * STL container
 
-# Example Image License
+# :tulip: Example Image License
 WoodCutter image license OGA-BY 3.0 License\
 Author CraftPix.net 2D Game Assets\
 
-# testing 3D
+# :shell: testing 3D
 ![test3d](https://user-images.githubusercontent.com/47798805/235448616-0d4eb17e-be0f-4c45-bd6e-821e6709f8e4.gif)
 
-# testing 2D
+# :coffee: testing 2D
 https://user-images.githubusercontent.com/47798805/222470263-8412c071-7f00-4779-9082-5c0cc3efd542.mp4
 
+# :mortar_board: How to use
 Below code is sample code for the ecs system
 
 ```cpp
