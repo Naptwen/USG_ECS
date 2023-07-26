@@ -115,8 +115,10 @@ namespace usdl
 				if (event.type == SDL_MOUSEBUTTONDOWN)
 				{
 					SDL_MouseButtonEvent keycode = event.button;
-					mouseMap[event.button.button].x = event.button.x;
-					mouseMap[event.button.button].y = event.button.y;
+					int x, y;
+					SDL_GetMouseState(&x, &y);
+					mouseMap[event.button.button].x = x;
+					mouseMap[event.button.button].y = y;
 					mouseMap[event.button.button].z = true;
 				}
 			}
@@ -183,11 +185,48 @@ namespace usdl
 		SDL_Rect DrawSize = { 0, 0, 0, 0 };
 		AniFrame Animation;
 		Vec2i split = { 0, 0 };
-		int frame = 0;
+		int _frame = 0;
+		bool _enable = true;
+		bool _loop = true;
 	public:
 		Image(void) = default;
-		Image(SDL_Renderer* _renderer, SDL_Window* _window, const char* path, SDL_Texture* texture, SDL_Surface* surface, SDL_Rect OriginSize, SDL_Rect ImageSplite, SDL_Rect DrawSize, AniFrame Animation,Vec2i split) : _renderer(_renderer), _window(_window), path(path), texture(texture), surface(surface), OriginSize(OriginSize), ImageSplite(ImageSplite), DrawSize(DrawSize), Animation(Animation), split(split) {}
-		Image(Image const& other):Image(other._renderer, other._window, other.path, other.texture, other.surface, other.OriginSize, other.ImageSplite, other.DrawSize, other.Animation, other.split) {}
+		Image(SDL_Renderer* _renderer, 
+			SDL_Window* _window, 
+			const char* path, 
+			SDL_Texture* texture, 
+			SDL_Surface* surface, 
+			SDL_Rect OriginSize, 
+			SDL_Rect ImageSplite, 
+			SDL_Rect DrawSize, 
+			AniFrame Animation,
+			Vec2i split, 
+			bool _enable,
+			bool _loop) :
+			_renderer(_renderer),
+			_window(_window), 
+			path(path), 
+			texture(texture),
+			surface(surface), 
+			OriginSize(OriginSize), 
+			ImageSplite(ImageSplite),
+			DrawSize(DrawSize), 
+			Animation(Animation), 
+			split(split), 
+			_enable(_enable),
+			_loop(_loop) {}
+		Image(Image const& other):
+			Image(	other._renderer, 
+					other._window, 
+					other.path, 
+					other.texture, 
+					other.surface, 
+					other.OriginSize, 
+					other.ImageSplite, 
+					other.DrawSize, 
+					other.Animation, 
+					other.split, 
+					other._enable,
+					other._loop) {}
 		Image(Image&& other) noexcept
 		{
 			_renderer = std::move(other._renderer);
@@ -200,6 +239,8 @@ namespace usdl
 			DrawSize = other.DrawSize;
 			Animation = other.Animation;
 			split = other.split;
+			_enable = other._enable;
+			_loop = other._loop;
 		}
 		Image& operator = (Image const& other)
 		{
@@ -213,6 +254,8 @@ namespace usdl
 			DrawSize = other.DrawSize;
 			Animation = other.Animation;
 			split = other.split;
+			_enable = other._enable;
+			_loop = other._loop;
 			return *this;
 		}
 		Image& operator = (Image&& other) noexcept 
@@ -259,38 +302,62 @@ namespace usdl
 			DrawSize.x = px;
 			DrawSize.y = py;
 		}
-		void Anim(int index_row = 0)
+		void Anim(bool loop, int index_row = 0)
 		{
 			SDL_assert(split.x != 0 && split.y != 0);
+			_loop = loop;
 			for (int j = 0; j < split.y; ++j)
 			{
 				Animation.emplace_back(Vec2i({ index_row, j }));
 			}
 		}
+		bool IsAnimFinish()
+		{
+			SDL_assert(!Animation.empty());
+			return (Animation.size() == _frame);
+		}
 		void Draw()
 		{
+			if (!_enable) return;
 			SDL_assert(texture);
 			if (Animation.empty())
 			{
 				SDL_RenderCopy(_renderer, texture, &ImageSplite, &DrawSize);
 			}
-			else
+			if (_loop && _frame >= Animation.size())
 			{
-				int x = Animation[frame].x;
-				int y = Animation[frame].y;
+				_frame = 0;
+			}
+			if (_frame < Animation.size())
+			{
+				int x = Animation[_frame].x;
+				int y = Animation[_frame].y;
 				Index(x, y);
 				SDL_RenderCopy(_renderer, texture, &ImageSplite, &DrawSize);
-				frame = (++frame >= Animation.size()) ? 0 : frame;
+				_frame++;
 			}
-
 		}
-
+		void Disable()
+		{
+			_enable = false;
+		}
+		void Enable()
+		{
+			_enable = true;
+		}
+		bool IsEnable() { return _enable; }
+		void GetSize(int& w, int& h)
+		{
+			w = DrawSize.w;
+			h = DrawSize.h;
+		}
+		int GetFrame() {return _frame; }
+		void ResetFrame() { _frame = 0; }
 		~Image()
 		{
 			SDL_DestroyTexture(texture);
 		}
 	};
-
 	struct Text
 	{
 		SDL_Renderer* _renderer = nullptr;
@@ -299,17 +366,34 @@ namespace usdl
 		SDL_Texture* _textTexture = nullptr;
 		SDL_Color _textColor = {0, 0, 0};
 		SDL_Rect _textRect = {0, 0, 0, 0};
-		const char* _text;
-		Text() = default;
-		Text(SDL_Renderer* _renderer, SDL_Window* _window, TTF_Font* _font, SDL_Texture* _textTexture, SDL_Color _textColor,SDL_Rect _textRect, const char* _text)
-		: _renderer(_renderer), 
+		const char* _text = nullptr;
+		bool _enable = true;
+		Text(void) = default;
+		Text(SDL_Renderer* _renderer, 
+			SDL_Window* _window, 
+			TTF_Font* _font, 
+			SDL_Texture* _textTexture, 
+			SDL_Color _textColor,
+			SDL_Rect _textRect, 
+			const char* _text,
+			bool _enable)
+		:	_renderer(_renderer), 
 			_window(_window), 
 			_font(_font), 
 			_textTexture(_textTexture),
 			_textColor(_textColor), 
 			_textRect(_textRect), 
-			_text(_text) {}
-		Text(Text const& other) : Text(other._renderer, other._window, other._font, other._textTexture, other._textColor, other._textRect, other._text) {}
+			_text(_text),
+			_enable(_enable) {}
+		Text(Text const& other) 
+		: Text(	other._renderer, 
+				other._window, 
+				other._font, 
+				other._textTexture, 
+				other._textColor, 
+				other._textRect, 
+				other._text,
+				other._enable) {}
 		Text(Text&& other) noexcept 
 		{
 			_renderer = std::move(other._renderer);
@@ -333,6 +417,7 @@ namespace usdl
 			_textColor = other._textColor;
 			_textRect = other._textRect;
 			_text = std::move(other._text);
+			_enable = other._enable;
 			return *this;
 		}
 
@@ -356,6 +441,7 @@ namespace usdl
 		}
 		void Draw()
 		{			
+			if(!_enable) return;
 			SDL_assert(_renderer);
 			SDL_Surface* textSurface = TTF_RenderUTF8_Solid(_font, _text, _textColor);
 			SDL_assert(textSurface);
@@ -364,6 +450,15 @@ namespace usdl
 			SDL_FreeSurface(textSurface);
 			SDL_DestroyTexture(_textTexture);
 		}
+		void Disable()
+		{
+			_enable = false;
+		}
+		void Enable()
+		{
+			_enable = true;
+		}
+		bool IsEnable() { return _enable; }
 
 		~Text()
 		{
@@ -381,20 +476,17 @@ namespace usdl
 		TYPE _type;
 		Mix_Music* _music = nullptr;
 		Mix_Chunk* _chunk = nullptr;
+		bool _enable = true;
 
 		Music() = default;
-		Music(TYPE _type, Mix_Music* _music, Mix_Chunk* _chunk): _type(_type), _music(_music), _chunk(_chunk) {};
-		Music(Music const& other)
-		{
-			_type = other._type;
-			_music = other._music;
-			_chunk = other._chunk;
-		}
+		Music(TYPE _type, Mix_Music* _music, Mix_Chunk* _chunk, bool _enable): _type(_type), _music(_music), _chunk(_chunk), _enable(_enable) {};
+		Music(Music const& other) : Music(other._type, other._music, other._chunk, other._enable) {}
 		Music(Music&& other) noexcept
 		{
 			_type = std::move(other._type);
 			_music = std::move(other._music);
 			_chunk = std::move(other._chunk);
+			_enable = other._enable;
 		}
 		Music& operator = (Music const& other)
 		{
@@ -405,6 +497,7 @@ namespace usdl
 			_type = other._type;
 			_music = std::move(other._music);
 			_chunk = std::move(other._chunk);
+			_enable = other._enable;
 			return *this;
 		}
 
@@ -418,11 +511,21 @@ namespace usdl
 		}
 		void Play()
 		{
+			if(!_enable) return;
 			if(_type == TYPE::music)
 				Mix_PlayMusic(_music, -1);
 			if (_type == TYPE::effect)
 				Mix_PlayChannel(-1, _chunk, 0);
 		}
+		void Disable()
+		{
+			_enable = false;
+		}
+		void Enable()
+		{
+			_enable = true;
+		}
+		bool IsEnable() { return _enable; }
 
 		~Music()
 		{
