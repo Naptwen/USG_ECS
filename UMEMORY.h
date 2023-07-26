@@ -1,4 +1,4 @@
-#ifndef __UMEMORY_HPP__
+ï»¿#ifndef __UMEMORY_HPP__
 #define __UMEMORY_HPP__
 
 /* Memory system version 1.0.1*/
@@ -53,7 +53,7 @@ typedef unsigned char _BTYPE;
 #define _UDSIZE 16 // Double block
 // Operator macro
 #define _PACK(s,a) (((s) << 1) | (a)) // Setting the size and the avaliablity
-#define _MOD(n,m) (((m * ((n / m) + 1) - n)) % m) //MOD °è»ê
+#define _MOD(n,m) (((m * ((n / m) + 1) - n)) % m) //MOD ê³„ì‚°
 #define _ODDCONV(x) (x % 2)? (x + 1) : x // Convert Odd to Even
 // Get Do somthing for Pointer Macro
 #define _PTR(p) (_BTYPE*)(p) //Casting p to the pointer
@@ -81,7 +81,7 @@ typedef unsigned char _BTYPE;
 // LOG
 #ifdef _DEBUG
 #define ULOG(COLOR, TEXT, ...) printf(COLOR "(%s:%d) " TEXT UEND, __func__, __LINE__, ##__VA_ARGS__)
-#define UASSERT(COND, TEXT, ...) do{ if(!(COND)){ULOG(UERROR, TEXT, ##__VA_ARGS__); exit(1); } } while(false)
+#define UASSERT(COND, TEXT, ...) do{ if(!(COND)){ULOG(UERROR, TEXT, ##__VA_ARGS__); } } while(false)
 #else
 #define ULOG_F 
 #define ULOG(COLOR, TEXT, ...) 

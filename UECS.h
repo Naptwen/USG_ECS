@@ -1,4 +1,4 @@
-#ifndef __UECS_HPP__	
+ï»¿#ifndef __UECS_HPP__	
 #define __UECS_HPP__
 /* Entity Component System version 1.0.1*/
 #include "UMEMORY.h"
@@ -70,7 +70,7 @@ namespace uecs
 	struct World
 	{
 	private:
-		unsigned int tick;
+		unsigned int tick = 0;
 		std::chrono::high_resolution_clock::time_point lastTime;
 		std::chrono::milliseconds timeInterval;
 		std::chrono::milliseconds minTime;
@@ -83,7 +83,7 @@ namespace uecs
 			uint32_t hash = 5381;
 			const unsigned char* byte_ptr = (const unsigned char*)(ptr);
 			for (size_t i = 0; i < size; ++i) {
-				hash = ((hash << 5) + hash) + byte_ptr[i]; // DJB2 ÇØ½Ã ÇÔ¼ö
+				hash = ((hash << 5) + hash) + byte_ptr[i]; // DJB2 í•´ì‹œ í•¨ìˆ˜
 			}
 			return hash;
 		}
@@ -101,7 +101,8 @@ namespace uecs
 		struct Entity  
 		{
 		private:
-			World* world;
+			Entity* parent = nullptr;
+			World* world = nullptr;
 			entity_id id;
 			type_id_list types;					
 		friend struct World;
@@ -113,6 +114,12 @@ namespace uecs
 			rule3(Entity) { world = std::exchange(other.world, world); id = std::exchange(other.id, 0); types = std::exchange(other.types, {}); }
 			rule4(Entity) { return *this = Entity(other.world, other.id, other.types); }
 			rule5(Entity) { world = std::exchange(other.world, world); id = std::exchange(other.id, 0); types = std::exchange(other.types, {});  return *this; }
+
+			template<typename T>
+			bool isHas()
+			{
+				return world->isHas<T>(id);
+			}
 
 			template<typename T>
 			Entity& set(T const& comp)
@@ -142,6 +149,22 @@ namespace uecs
 			{
 				world->destroy(id);
 			}
+
+			void setParent(Entity const& parent)
+			{
+				world->setParent(id, parent.id);
+			}
+
+			Entity& getParent()
+			{
+				return world->getParent(id);
+			}
+
+			std::vector<Entity>&& getChildren()
+			{
+				return std::move(world->getChildren(id));
+			}
+
 		};
 	private:
 		// Data-only unit that holds specific attributes of an entity in ECS.
@@ -166,6 +189,7 @@ namespace uecs
 		};
 
 		using systemfn = void(*)(Entity&);
+		mutable std::unordered_map<entity_id, entity_id> parents;
 		mutable std::unordered_map<entity_id, Entity> entities;
 		mutable std::unordered_map<data_index, Comp, PairHash, PairEqual> component_list;
 		mutable std::queue<uint32_t> unique_id_q;
@@ -228,15 +252,13 @@ namespace uecs
 		void getTypeName(type_id_list& type_list) {
 			type_list.insert(getHash(typeid(T).name()));
 		}
-
 		template<typename T, typename ...Args>
 		typename std::enable_if<(sizeof...(Args) != 0)>::type
-			getTypeName(type_id_list& type_list) {
+		getTypeName(type_id_list& type_list) {
 			type_list.insert(getHash(typeid(T).name()));
 			getTypeName<Args...>(type_list);
 		}
-
-		
+	
 		void updateTime()
 		{
 			std::chrono::steady_clock::time_point currentTime;
@@ -264,8 +286,7 @@ namespace uecs
 		{
 			// Setting component
 			component_type_id type_id = getHash(typeid(T).name());
-			data_index data_id = std::make_pair(_entity_id, type_id);
-			ULOG(UDEBUG, "comp %s id %d connected to entity %d", typeid(T).name(), type_id, data_id);
+			data_index data_id = std::make_pair(_entity_id, type_id);			
 			UASSERT(component_list.count(data_id) == 0, "comp %s id %d already exists in entity %d !",typeid(T).name(), type_id, data_id);
 			component_list[data_id] = Comp(umemory::UANY(data));
 			entities[_entity_id].types.insert(getHash(typeid(T).name()));
@@ -292,7 +313,7 @@ namespace uecs
 
 		void destroy(entity_id _entity_id)
 		{
-			auto types = entities[_entity_id].types;
+			type_id_list types = entities[_entity_id].types;
 			for (auto type_id : types)
 			{
 				component_list[{ _entity_id, type_id }].comp.release();
@@ -302,10 +323,72 @@ namespace uecs
 			unique_id_q.push(_entity_id);
 		}
 
+		void setParent(entity_id _entity_id, entity_id _parent_id)
+		{
+			parents[_entity_id] = _parent_id;
+		}
+
+		Entity& getParent(entity_id _entity_id)
+		{
+			UASSERT(parents.count(_entity_id) > 0, "%d doesn't have parent!", _entity_id);
+			return entities[parents[_entity_id]];
+		}
+
+		std::vector<Entity> getChildren(entity_id _entity_id)
+		{
+			std::vector<Entity> children;
+			for (auto& temp : parents)
+			{
+				if(temp.second == _entity_id)
+					children.emplace_back(entities[temp.first]);
+			}
+			return children;
+		}
+
+		template<typename T>
+		void searchEntity(std::vector<Entity>& selected_entities)
+		{
+			for (auto& temp : entities)
+			{
+				if (temp.second.isHas<T>())
+				{
+					selected_entities.emplace_back(entities.at(temp.first));
+				}
+			}
+		}
+		template<typename T, typename ...Args>
+		typename std::enable_if<(sizeof...(Args) != 0)>::type
+		searchEntity(std::vector<Entity>& selected_entities)
+		{
+			for (auto& temp : entities)
+			{
+				if (temp.second.isHas<T>())
+				{
+					selected_entities.emplace_back(entities.at(temp.first));
+				}
+			}
+			searchEntity<Args...>(selected_entities);
+		}
+
+		// disable specific system 
+		void system_disable(systemfn func, PHASE Phase)
+		{
+			auto trg = std::find(systems[Phase].begin(), systems[Phase].end(), func);
+			if (trg != systems[Phase].end())
+				(*trg).disable();
+		}
+		// disable specific system 
+		void system_enable(systemfn func, PHASE Phase)
+		{
+			auto trg = std::find(systems[Phase].begin(), systems[Phase].end(), func);
+			if (trg != systems[Phase].end())
+				trg->enable();
+		}
+
 	public:
 		// create empty world
 		// the maximum number of entity is 65535
-		World()
+		World(void)
 		{
 			for (uint32_t i = 1; i < 0xFFFF; ++i)
 			{
@@ -316,6 +399,16 @@ namespace uecs
 			minTime = std::chrono::milliseconds(0);
 			maxTime = std::chrono::milliseconds(0);
 		}
+		template<typename T>
+		bool isHas(entity_id id)
+		{
+			if (entities.count(id) == 0) return false;
+			component_type_id type_id = getHash(typeid(T).name());
+			data_index data_id = std::make_pair(id, type_id);
+			if (component_list.count(data_id) == 0) return false;
+			return true;
+		}
+
 		// set system in specific Phase
 		template<typename ...Args>
 		void system(systemfn func, PHASE Phase)
@@ -325,24 +418,10 @@ namespace uecs
 			System sys(this, func, type_list);
 			systems[Phase].emplace_back(sys);
 		}
-		// disable specific system 
-		void system_disable(systemfn func, PHASE Phase)
-		{
-			auto trg = std::find(systems[Phase].begin(), systems[Phase].end(), func);
-			if(trg != systems[Phase].end())
-				(*trg).disable();
-		}
-		// disable specific system 
-		void system_enable(systemfn func, PHASE Phase)
-		{
-			auto trg = std::find(systems[Phase].begin(), systems[Phase].end(), func);
-			if (trg != systems[Phase].end())
-				trg->enable();
-		}
 		// setting Timer 
 		// minTimer is the minimum millisecond for deltaTime
 		// maxTimer is the maximum millisecond for deltatTime
-		void TimerSetting(const long long& minTimer, const long long& maxTimer)
+		void settingTimer(const long long& minTimer, const long long& maxTimer)
 		{
 			minTime = std::chrono::milliseconds(minTimer);
 			maxTime = std::chrono::milliseconds(maxTimer);
@@ -384,24 +463,47 @@ namespace uecs
 		{
 			updateTick();
 			updateTime();
-			for (auto temp : systems[uecs::PHASE::OnUpdate])
+			for (auto& temp : systems[uecs::PHASE::OnUpdate])
 				temp.run();
-			for (auto temp : systems[uecs::PHASE::Update])
+			for (auto& temp : systems[uecs::PHASE::Update])
 				temp.run();
-			for (auto temp : systems[uecs::PHASE::OffUpdate])
+			for (auto& temp : systems[uecs::PHASE::OffUpdate])
 				temp.run();
 		}
 		// running the Once type phase 
 		// for Awake -> OnStart -> Start -> OffStart
 		void once_progress() {
-			for(auto temp : systems[uecs::PHASE::Awake])
+			for(auto& temp : systems[uecs::PHASE::Awake])
 				temp.run();	
-			for(auto temp : systems[uecs::PHASE::OnStart])
+			for(auto& temp : systems[uecs::PHASE::OnStart])
 				temp.run();
-			for(auto temp : systems[uecs::PHASE::Start])
+			for(auto& temp : systems[uecs::PHASE::Start])
 				temp.run();
-			for(auto temp : systems[uecs::PHASE::OffStart])
+			for(auto& temp : systems[uecs::PHASE::OffStart])
 				temp.run();
+		}
+		// reset world
+		void reset()
+		{
+			tick = 0;
+			lastTime = std::chrono::high_resolution_clock::time_point();
+			timeInterval = std::chrono::milliseconds(0);
+			minTime = std::chrono::milliseconds(0);
+			maxTime = std::chrono::milliseconds(0);
+			hash_name.clear();
+			for(auto& temp : parents)
+				entities[temp.first].destroy();
+			parents.clear();
+			entities.clear();
+			component_list.clear();
+		}
+		// Searching specific entities by given types
+		template<typename ...Args>
+		std::vector<Entity> find()
+		{
+			std::vector<Entity> trg;
+			searchEntity<Args...>(trg);
+			return trg;
 		}
 	};
 
