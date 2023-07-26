@@ -19,7 +19,7 @@ WoodCutter image license OGA-BY 3.0 License\
 Author CraftPix.net 2D Game Assets\
 
 # :cop: testing my own SDL game Engine
-# the given image from the blue archive
+- the given image from the blue archive
 https://github.com/Naptwen/USG_ECS/assets/47798805/4cdf2da8-ff75-4b9f-9613-3dd4aca726e9
 
 
