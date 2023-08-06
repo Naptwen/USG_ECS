@@ -18,17 +18,14 @@ Thanks to "flecs" and its influence, my own ecs implementation has been a useful
 WoodCutter image license OGA-BY 3.0 License\
 Author CraftPix.net 2D Game Assets\
 
-# :cop: testing my own SDL game Engine
-- the given image from the blue archive
-
-  
-https://github.com/Naptwen/USG_ECS/assets/47798805/4cdf2da8-ff75-4b9f-9613-3dd4aca726e9
-
 # :shell: OpenGL 3D Own Simple Engine system
 https://github.com/Naptwen/USG_ECS/assets/47798805/20cebe56-17be-4fe6-b3ba-d7bff8dcf98f
+
+# :coffee: Testing my own SDL game Engine
+https://github.com/Naptwen/USG_ECS/assets/47798805/4cdf2da8-ff75-4b9f-9613-3dd4aca726e9
+
 ![test3d](https://user-images.githubusercontent.com/47798805/235448616-0d4eb17e-be0f-4c45-bd6e-821e6709f8e4.gif)
 
-# :coffee: Exmaple for 2D with SDL
 https://user-images.githubusercontent.com/47798805/222470263-8412c071-7f00-4779-9082-5c0cc3efd542.mp4
 
 # :mortar_board: How to use
