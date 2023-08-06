@@ -1,5 +1,5 @@
-#  :pushpin: Version 1.0.1
-USG (c) July 16th, 2023.
+#  :pushpin: Version 1.1.0
+USG (c) August 6, 2023.
 
 # :stuck_out_tongue_winking_eye: Introduction
 This ecs library draws significant inspiration from the fantastic "flecs" library by SanderMertens, 
@@ -24,11 +24,11 @@ Author CraftPix.net 2D Game Assets\
   
 https://github.com/Naptwen/USG_ECS/assets/47798805/4cdf2da8-ff75-4b9f-9613-3dd4aca726e9
 
-
-# :shell: testing 3D
+# :shell: OpenGL 3D Own Simple Engine system
+https://github.com/Naptwen/USG_ECS/assets/47798805/20cebe56-17be-4fe6-b3ba-d7bff8dcf98f
 ![test3d](https://user-images.githubusercontent.com/47798805/235448616-0d4eb17e-be0f-4c45-bd6e-821e6709f8e4.gif)
 
-# :coffee: testing 2D
+# :coffee: Exmaple for 2D with SDL
 https://user-images.githubusercontent.com/47798805/222470263-8412c071-7f00-4779-9082-5c0cc3efd542.mp4
 
 # :mortar_board: How to use
