@@ -1,13 +1,7 @@
 ﻿#ifndef __UECS_HPP__	
 #define __UECS_HPP__
-/* Entity Component System version 1.0.1*/
-#include "UMEMORY.h"
-#include <queue>
-#include <unordered_set>
-#include <map>
-#include <unordered_map>
-#include <random>
-#include <chrono>
+
+/* Entity Component System version 1.1.0*/
 /* USG (c) July 16th, 2023.
 Permission is hereby granted, free of charge, to any person
 obtaining a copy of this software and associated documentation
@@ -28,6 +22,13 @@ WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 */
+#include "UMEMORY.h"
+#include <queue>
+#include <unordered_set>
+#include <map>
+#include <unordered_map>
+#include <random>
+#include <chrono>
 namespace uecs
 {
 	enum class PHASE
@@ -65,7 +66,6 @@ namespace uecs
 			return lhs.first == rhs.first && lhs.second == rhs.second;
 		}
 	};
-
 
 	struct World
 	{
@@ -137,6 +137,11 @@ namespace uecs
 			World* get_world()
 			{
 				return world;
+			}
+
+			entity_id ID()
+			{
+				return id;
 			}
 
 			template<typename T>
@@ -306,7 +311,7 @@ namespace uecs
 		{
 			component_type_id type_id = getHash(typeid(T).name());
 			data_index data_id = std::make_pair(_entity_id, type_id);
-			UASSERT(component_list.find(data_id) != component_list.end(), "remove entity %d doesn't have given %s component!", _entity_id, type_id);
+			UASSERT(component_list.find(data_id) != component_list.end(), "remove entity %ud doesn't have given %s component!", _entity_id, typeid(T).name());
 			component_list.erase(component_list.find(data_id));
 			entities[_entity_id].types.erase(type_id);
 		}
