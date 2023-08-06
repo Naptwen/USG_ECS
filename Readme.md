@@ -18,7 +18,7 @@ Thanks to "flecs" and its influence, my own ecs implementation has been a useful
 WoodCutter image license OGA-BY 3.0 License\
 Author CraftPix.net 2D Game Assets\
 
-# :shell: OpenGL 3D Own Simple Engine system
+# :shell: OpenGL 3D Own Simple Engine system (Camera, OBJECT Loader, Light, System PipeLine, Components, Collision, I/O samples)
 https://github.com/Naptwen/USG_ECS/assets/47798805/20cebe56-17be-4fe6-b3ba-d7bff8dcf98f
 
 ![test3d](https://user-images.githubusercontent.com/47798805/235448616-0d4eb17e-be0f-4c45-bd6e-821e6709f8e4.gif)
