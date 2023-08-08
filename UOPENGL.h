@@ -455,16 +455,16 @@ inline bool CheckOBB(COLLISION& A, COLLISION& B)
     auto n8 = glm::cross(v1, v5);
     auto n9 = glm::cross(v1, v6);
     // D
-    auto n7 = glm::cross(v2, v4);
-    auto n8 = glm::cross(v2, v5);
-    auto n9 = glm::cross(v2, v6);
+    auto n10 = glm::cross(v2, v4);
+    auto n11 = glm::cross(v2, v5);
+    auto n12 = glm::cross(v2, v6);
     // E
-    auto n7 = glm::cross(v3, v4);
-    auto n8 = glm::cross(v3, v5);
-    auto n9 = glm::cross(v3, v6);
+    auto n13 = glm::cross(v3, v4);
+    auto n14 = glm::cross(v3, v5);
+    auto n15 = glm::cross(v3, v6);
 
 
-    std::vector<glm::vec3> normalAxis({n1, n2, n3, n4, n5, n6});
+    std::vector<glm::vec3> normalAxis({n1, n2, n3, n4, n5, n6, n7, n8, n9, n10, n11, n12, n13, n14, n15});
     std::vector<float> projA;
     std::vector<float> projB;
     // Check collision
